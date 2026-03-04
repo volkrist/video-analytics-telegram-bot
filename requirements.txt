@@ -1,0 +1,7 @@
+aiogram
+asyncpg
+httpx
+pydantic
+pydantic-settings
+python-dotenv
+orjson
