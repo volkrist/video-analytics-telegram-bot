@@ -93,10 +93,28 @@ def try_parse_rules(text: str) -> dict[str, Any] | None:
     if re.search(r"сколько\s+всего\s+видео", t) or re.search(r"всего\s+видео\s+в\s+системе", t):
         return {"intent": "count_videos_total"}
 
-    # 2) Сколько видео у креатора с id N вышло с ... по ... включительно
-    m_creator = re.search(r"креатора\s+с\s*id\s*(\d+)", t, re.I)
+    # 2a) Сколько видео у креатора с id X набрали больше N просмотров (итоговая статистика)
+    m_creator_views = re.search(
+        r"креатора\s+с\s*id\s*([a-fA-F0-9]+).*?набрали\s+больше\s+([\d\s]+)\s*просмотр",
+        t,
+        re.I | re.DOTALL,
+    )
+    if m_creator_views:
+        try:
+            creator_id = m_creator_views.group(1).strip()
+            threshold = int(re.sub(r"\s+", "", m_creator_views.group(2)))
+            return {
+                "intent": "count_videos_by_creator_views_gt",
+                "creator_id": creator_id,
+                "threshold": threshold,
+            }
+        except ValueError:
+            pass
+
+    # 2b) Сколько видео у креатора с id N вышло с ... по ... включительно
+    m_creator = re.search(r"креатора\s+с\s*id\s*([a-fA-F0-9]+|\d+)", t, re.I)
     if m_creator:
-        creator_id = int(m_creator.group(1))
+        creator_id = m_creator.group(1).strip()
         date_from, date_to = _parse_date_range_ru(text)
         if date_from and date_to:
             return {

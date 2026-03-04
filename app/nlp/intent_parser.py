@@ -34,6 +34,18 @@ async def execute_intent(pool: asyncpg.Pool, intent: dict) -> int:
             raise ValueError("count_videos_views_gt requires 'threshold'")
         return await queries.count_videos_views_gt(pool, int(threshold))
 
+    if name == "count_videos_by_creator_views_gt":
+        creator_id = intent.get("creator_id")
+        threshold = intent.get("threshold")
+        if creator_id is None or threshold is None:
+            raise ValueError(
+                "count_videos_by_creator_views_gt requires creator_id and threshold"
+            )
+        cid = creator_id if isinstance(creator_id, str) else str(creator_id)
+        return await queries.count_videos_by_creator_views_gt(
+            pool, cid, int(threshold)
+        )
+
     if name == "count_videos_by_creator_date_range":
         creator_id = intent.get("creator_id")
         date_from = intent.get("date_from")

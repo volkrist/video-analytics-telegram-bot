@@ -24,13 +24,15 @@ SCHEMA_DESCRIPTION = """
 - count_videos_total — всего видео в системе
 - count_videos_by_creator_date_range — число видео креатора за период (creator_id, date_from, date_to)
 - count_videos_views_gt — число видео с просмотрами больше порога (threshold)
+- count_videos_by_creator_views_gt — число видео креатора с итоговыми просмотрами больше порога (creator_id, threshold)
 - sum_delta_on_date — сумма прироста метрики за дату (date, metric: views|likes|comments|reports)
 - count_distinct_videos_with_positive_delta_on_date — число разных видео с положительным приростом метрики за дату (date, metric)
 
 Формат ответа — только валидный JSON. Примеры:
 {"intent": "count_videos_total"}
 {"intent": "count_videos_views_gt", "threshold": 100000}
-{"intent": "count_videos_by_creator_date_range", "creator_id": 42, "date_from": "2025-11-01", "date_to": "2025-11-05"}
+{"intent": "count_videos_by_creator_views_gt", "creator_id": "aca1061a9d324ecf8c3fa2bb32d7be63", "threshold": 10000}
+{"intent": "count_videos_by_creator_date_range", "creator_id": "42", "date_from": "2025-11-01", "date_to": "2025-11-05"}
 {"intent": "sum_delta_on_date", "date": "2025-11-28", "metric": "views"}
 {"intent": "count_distinct_videos_with_positive_delta_on_date", "date": "2025-11-27", "metric": "views"}
 Даты в формате YYYY-MM-DD.

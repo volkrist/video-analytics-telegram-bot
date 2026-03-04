@@ -42,9 +42,28 @@ async def count_videos_by_creator_date_range(
 
 
 async def count_videos_views_gt(pool: asyncpg.Pool, threshold: int) -> int:
+    """Всего видео в системе с просмотрами больше порога (итоговая статистика)."""
     async with pool.acquire() as conn:
         row = await conn.fetchval(
             "SELECT COUNT(*) FROM videos WHERE views_count > $1",
+            threshold,
+        )
+    return int(row)
+
+
+async def count_videos_by_creator_views_gt(
+    pool: asyncpg.Pool, creator_id: int | str, threshold: int
+) -> int:
+    """Число видео креатора с итоговыми просмотрами больше порога (videos.views_count)."""
+    async with pool.acquire() as conn:
+        row = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM videos
+            WHERE creator_id = $1
+              AND views_count > $2
+            """,
+            str(creator_id),
             threshold,
         )
     return int(row)
