@@ -30,12 +30,17 @@ def _register_handlers(dp: Dispatcher, pool: asyncpg.Pool) -> None:
         if not text:
             await message.answer("0")
             return
+        logger.info("text=%r", text)
+        intent = None
         try:
             intent = await get_intent(text)
+            logger.info("intent=%s", intent)
             result = await execute_intent(pool, intent)
+            logger.info("result=%s", result)
             await message.answer(str(result))
         except Exception as e:
             logger.exception("Intent/execute error: %s", e)
+            logger.warning("Failed intent (see above for SQL/params if DB error): %s", intent)
             await message.answer("0")
 
 

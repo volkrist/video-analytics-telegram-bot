@@ -74,54 +74,46 @@ PYTHONPATH=. python scripts/load_json.py --path data/videos.json
 
 ## Архитектура
 
-Общий поток обработки запроса:
+Цепочка обработки запроса:
 
 ```
-User question
+Вопрос пользователя
       ↓
-Rule-based parser
+Rules (правила/регулярки) — детерминированный разбор типовых формулировок
       ↓
-LLM fallback (если правила не подошли)
+LLM (если правила не сработали) — возвращает только JSON intent, не SQL
+      ↓
+При ошибке LLM (401, таймаут и т.д.) — emergency rules (time-range + delta по ключевым словам)
       ↓
 Intent JSON
       ↓
-SQL layer
+intent_parser — выбор функции и параметров по intent
       ↓
-PostgreSQL
+SQL-слой (queries.py) — параметризованные запросы к PostgreSQL
       ↓
-Telegram bot returns a number
+Бот отвечает одним числом
 ```
 
-Пример intent:
+**LLM не генерирует SQL.** Модель возвращает только структурированный JSON (intent + поля). Все SQL-запросы заданы в коде (`app/db/queries.py`) и выполняются через параметризованные вызовы.
 
-```json
-{"intent": "count_videos_views_gt", "threshold": 100000}
-```
+✔ Бот всегда отвечает одним числом (в т.ч. при неизвестном интенте или ошибке — «0»).
 
-### Важное ограничение
+### Фоллбек при 401/таймауте
 
-**LLM никогда не генерирует SQL.**
+Если вызов LLM завершается с ошибкой (401, таймаут, сеть), используется **emergency rules**: по ключевым словам (прирост, выросли, между замерами, время «с … до …», дата словами, опционально креатор с id) строится intent для `sum_delta_in_time_range` или `sum_delta_in_time_range_by_creator`, чтобы ответить числом без LLM.
 
-LLM (или rule parser) возвращает только структурированный intent.  
-SQL-запросы определены строго в коде (`app/db/queries.py`) и выполняются через параметризованные запросы к PostgreSQL.
+### Поддерживаемые интенты (возвращаемые после правил/LLM)
 
-✔ Бот всегда возвращает одно число.
-
-### Дополнение к разделу архитектуры
-
-LLM используется только для определения интента запроса.
-Описание схемы базы данных и список поддерживаемых интентов передаются модели в системном промпте.
-
-Схема и правила для модели определены в:
-
-**app/nlp/llm.py**
-
-в переменной `SCHEMA_DESCRIPTION`.
-
-Модель возвращает только структурированный JSON-интент, например:
-
-```json
-{"intent": "count_videos_views_gt", "threshold": 100000}
-```
-
-SQL-запросы никогда не генерируются моделью и выполняются только в коде приложения (`app/db/queries.py`) через параметризованные запросы.
+- `count_videos_total` — всего видео в системе
+- `count_videos_views_gt` — число видео с просмотрами больше порога (threshold)
+- `count_videos_metric_cmp_final` — число видео по итоговой статистике: метрика op value (metric, op: lt|lte|gt|gte|eq, value)
+- `count_videos_by_creator_views_gt_final` — число видео креатора с просмотрами > порога (creator_id, threshold)
+- `count_videos_by_creator_metric_gt_final` — то же с метрикой (creator_id, threshold, metric)
+- `count_videos_by_creator_metric_cmp_final` — число видео креатора: метрика op value (creator_id, metric, op, value)
+- `count_videos_by_creator_date_range` — число видео креатора за период (creator_id, date_from, date_to; date_to включительно)
+- `sum_final_metric_in_period` — сумма финальной метрики по опубликованным видео за период (metric, date_from, date_to_exclusive)
+- `sum_delta_on_date` — сумма прироста метрики за дату (date, metric), video_snapshots
+- `count_distinct_videos_with_positive_delta_on_date` — число разных видео с положительным приростом за дату (date, metric)
+- `count_snapshots_delta_cmp` — число замеров, где прирост за час удовлетворяет условию (metric, op, value)
+- `sum_delta_in_time_range` — сумма прироста метрики в промежутке времени дня, все видео (date, time_from, time_to)
+- `sum_delta_in_time_range_by_creator` — то же для видео одного креатора (creator_id, date, time_from, time_to)
